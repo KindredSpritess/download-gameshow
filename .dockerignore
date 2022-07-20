@@ -1,0 +1,31 @@
+.deploy
+.git
+.github
+.idea
+.vscode
+node_modules
+vendor
+
+.dockerignore
+.editorconfig
+.env
+.env.example
+.gitattributes
+.gitignore
+.lando.yml
+.lando.*.yml
+.phpunit.result.cache
+.styleci.yml
+docker-compose.yml
+Dockerfile
+README.md
+
+#Not required with NGINX
+public/.htaccess
+public/web.config
+
+#Laravel temporary files
+bootstrap/cache/*
+public/hot
+public/storage
+storage/*.key

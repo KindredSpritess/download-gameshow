@@ -1,0 +1,110 @@
+version: '3.8'
+
+services:
+  app-prod:
+    <<: *app-defaults
+    image: ghcr.io/r6digital/template:master
+    logging:
+      options:
+        <<: *logzio-opts-defaults
+        logzio-token: jXtpWCQXDOFDIiMENWysZhGrlnrEGXos #storapp-php-prod
+    secrets:
+      - source: template_app-prod-env
+        target: /var/www/html/.env
+        mode: 0400
+        uid: '33'
+    deploy:
+      labels:
+        <<: *app-defaults-svc-labels
+        traefik.http.routers.template_app-prod.entrypoints: https
+        traefik.http.routers.template_app-prod.tls: "true"
+        traefik.http.routers.template_app-prod.tls.certresolver: le
+        traefik.http.routers.template_app-prod.rule: Host(`prod-template.pma.r6internal.com`)
+        traefik.http.routers.template_app-prod.service: template_app-prod
+        traefik.http.services.template_app-prod.loadbalancer.server.port: 80
+
+  app-staging:
+    <<: *app-defaults
+    image: ghcr.io/r6digital/template:staging
+    logging:
+      options:
+        <<: *logzio-opts-defaults
+        logzio-token: SXJBMuuVsSzSFEHywpyxGrwGfLnxPxcH #storapp-php-stg
+    secrets:
+      - source: template_app-staging-env
+        target: /var/www/html/.env
+        mode: 0400
+        uid: '33'
+    environment:
+      APP_ENV: staging
+    deploy:
+      labels:
+        <<: *app-defaults-svc-labels
+        traefik.http.routers.template_app-staging.entrypoints: https
+        traefik.http.routers.template_app-staging.tls: "true"
+        traefik.http.routers.template_app-staging.tls.certresolver: le
+        traefik.http.routers.template_app-staging.rule: Host(`staging-template.pma.r6internal.com`)
+        traefik.http.routers.template_app-staging.service: template_app-staging
+        traefik.http.services.template_app-staging.loadbalancer.server.port: 80
+
+networks:
+  public:
+    external: true
+  secret-service:
+    external: true
+
+secrets:
+  template_app-prod-env:
+    name: template_app-prod-env
+    external: true
+    
+  template_app-staging-env:
+    name: template_app-staging-env
+    external: true
+
+x-logzio-opt-default: &logzio-opts-defaults
+  logzio-url: https://listener.logz.io:8071
+  logzio-dir-path: ./docker_logs
+  logzio-type: php
+  logzio-attributes: '{"logzio_codec":"json"}'
+  labels: "\
+    org.opencontainers.image.title,\
+    org.opencontainers.image.source,\
+    org.opencontainers.image.version,\
+    org.opencontainers.image.revision,\
+    com.docker.stack.namespace,\
+    com.docker.swarm.service.name,\
+    com.docker.swarm.task.name\
+   "
+
+x-app-defaults: &app-defaults
+  networks:
+    public:
+  logging:
+    driver: logzio/logzio-logging-plugin
+  healthcheck:
+    test: ["CMD-SHELL", "./artisan schedule:list"]
+    interval: 1m
+    timeout: 30s
+    retries: 1
+    start_period: 1m
+  deploy:
+    replicas: 3
+    update_config:
+      order: start-first
+      parallelism: 1
+    restart_policy:
+      delay: 30s
+      max_attempts: 2
+    resources:
+      limits:
+        memory: 1.5G
+      reservations:
+        memory: 100M
+    labels: &app-defaults-svc-labels
+      traefik.enable: true
+      traefik.docker.network: public
+      traefik.constraint-label: public-sgp
+    placement:
+      constraints:
+        - node.labels.region==sgp

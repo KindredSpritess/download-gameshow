@@ -1,0 +1,36 @@
+name: template
+
+recipe: laravel
+
+config:
+  php: '8.1'
+  via: nginx
+  webroot: public
+  database: mysql:8.0
+  xdebug: true
+services:
+  appserver:
+    type: php:custom
+    composer_version: 2-latest
+    run:
+      - composer install
+      - bash -c '[[ ! -f /app/.env ]] && echo "APP_KEY=">/app/.env' && php artisan key:generate
+      - php artisan migrate
+    overrides:
+      build:
+        context: .
+        dockerfile: Dockerfile
+        target: lando
+        # args:
+        #   NOVA_USERNAME: ${NOVA_USERNAME:-webmaster@centerforceit.com.au}
+        #   NOVA_LICENSE_KEY:
+  phpmyadmin:
+    type: phpmyadmin
+  mailhog:
+    type: mailhog
+    portforward: true
+    hogfrom:
+      - appserver
+proxy:
+  mailhog:
+    - mailhog.template.lndo.site
